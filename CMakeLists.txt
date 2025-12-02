@@ -5,26 +5,45 @@ project(MonProjet LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Ajouter le dossier include/
+# ----------------------------------------------------------
+# Include
+# ----------------------------------------------------------
 include_directories(include)
 
-# Récupérer les sources C++ (récursivement)
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
-
-# Ajouter l'exécutable
-add_executable(monprogramme
-    main.cpp
-    ${SRC_FILES}
+# ----------------------------------------------------------
+# Sources du framework
+# ----------------------------------------------------------
+file(GLOB_RECURSE FRAMEWORK_SRC
+    src/data/*.cpp
+    src/simulation/*.cpp
+    src/calibration/*.cpp
 )
 
-# Chercher libcurl et Lier libcurl
+# ----------------------------------------------------------
+# Bibliothèque du framework (MonteCarloEngine, loaders, etc.)
+# ----------------------------------------------------------
+add_library(stochastic_framework STATIC
+    ${FRAMEWORK_SRC}
+)
+
+# ----------------------------------------------------------
+# Dépendances externes
+# ----------------------------------------------------------
 find_package(CURL REQUIRED)
-target_link_libraries(monprogramme PRIVATE CURL::libcurl)
+target_link_libraries(stochastic_framework PRIVATE CURL::libcurl)
 
-# Chercher nlohmann_json et le lier
 find_package(nlohmann_json REQUIRED)
-target_link_libraries(monprogramme PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(stochastic_framework PRIVATE nlohmann_json::nlohmann_json)
 
-#  Chercher Eigen et le lier
 find_package(Eigen3 REQUIRED)
-target_link_libraries(monprogramme PRIVATE Eigen3::Eigen)
+target_link_libraries(stochastic_framework PRIVATE Eigen3::Eigen)
+
+# ----------------------------------------------------------
+# Executable principal
+# ----------------------------------------------------------
+add_executable(monprogramme
+    main.cpp
+)
+
+# Link du main contre la lib du framework
+target_link_libraries(monprogramme PRIVATE stochastic_framework)

@@ -1,7 +1,4 @@
-// include/core/TimeGrid.hpp
-#ifndef TIME_GRID_HPP
-#define TIME_GRID_HPP
-
+#pragma once
 #include <vector>
 #include <stdexcept>
 #include <cmath>
@@ -210,6 +207,4 @@ public:
     }
 };
 
-} // namespace stochastic
-
-#endif // TIME_GRID_HPP
+} 

@@ -1,291 +1,139 @@
-// include/simulation/MonteCarloEngine.hpp
-#ifndef MONTE_CARLO_ENGINE_HPP
-#define MONTE_CARLO_ENGINE_HPP
+/**
+ * @file MonteCarloEngine.hpp
+ * @brief Moteur de simulation Monte Carlo générique pour processus stochastiques.
+ * @version 1.0
+ */
 
+#pragma once
 #include "../core/StochasticProcess.hpp"
-#include <memory>
 #include <vector>
-#include <thread>
-#include <random>
+#include <memory>
 #include <future>
-#include <cmath>
+#include <thread>
 #include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <string>
 
 /**
- * Monte Carlo Simulation Engine
- * Supports:
- * - Parallel simulation
- * - Variance reduction (antithetic variates, control variates)
- * - Progress tracking
- * - Statistical analysis
+ * @class MonteCarloEngine
+ * @brief Moteur de simulation Monte Carlo supportant le parallélisme,
+ *        les antithetic variates et une analyse statistique complète.
  */
 class MonteCarloEngine {
 public:
+
+    /**
+     * @struct SimulationConfig
+     * @brief Paramètres de configuration de la simulation Monte Carlo.
+     */
     struct SimulationConfig {
-        size_t nPaths = 1000;              // Number of paths to simulate
-        size_t nSteps = 252;               // Steps per path (e.g., trading days)
-        double T = 1.0;                    // Time horizon
-        bool antitheticVariates = false;   // Use antithetic variates
-        bool controlVariates = false;      // Use control variates
-        size_t nThreads = 4;               // Number of threads (fixed default)
-        unsigned long seed = 42;           // Seed (fixed default)
-        bool useExactScheme = true;        // Use exact simulation if available
+        size_t nPaths = 1000;             /**< Nombre de trajectoires */
+        size_t nSteps = 252;              /**< Nombre de pas de temps */
+        double T = 1.0;                   /**< Horizon temporel */
+        bool antitheticVariates = false;  /**< Utiliser les antithetic variates */
+        bool controlVariates = false;     /**< (Optionnel) Control variates */
+        size_t nThreads = std::thread::hardware_concurrency(); /**< Threads utilisés */
+        unsigned long seed = 42;          /**< Graine aléatoire */
+        bool useExactScheme = true;       /**< Utiliser un schéma exact si disponible */
     };
 
+    /**
+     * @struct SimulationStatistics
+     * @brief Statistiques détaillées des trajectoires simulées.
+     */
     struct SimulationStatistics {
-        // Path statistics
-        std::vector<double> meanPath;      // Mean across all paths at each time
-        std::vector<double> stdPath;       // Std dev at each time
-        std::vector<double> quantiles05;   // 5th percentile
-        std::vector<double> quantiles25;   // 25th percentile
-        std::vector<double> quantiles50;   // Median
-        std::vector<double> quantiles75;   // 75th percentile
-        std::vector<double> quantiles95;   // 95th percentile
-        
-        // Terminal statistics
-        double terminalMean;
-        double terminalStd;
-        double terminalMin;
-        double terminalMax;
-        
-        // Moments
-        double skewness;
-        double kurtosis;
-        
-        // Convergence
-        double standardError;
-        size_t nPaths;
+        std::vector<double> meanPath;     /**< Moyenne par pas de temps */
+        std::vector<double> stdPath;      /**< Écart-type par pas de temps */
+
+        std::vector<double> quant05;      /**< Quantile 5% */
+        std::vector<double> quant25;      /**< Quantile 25% */
+        std::vector<double> quant50;      /**< Médiane */
+        std::vector<double> quant75;      /**< Quantile 75% */
+        std::vector<double> quant95;      /**< Quantile 95% */
+
+        double terminalMean{};            /**< Moyenne terminale */
+        double terminalStd{};             /**< Écart-type terminal */
+        double terminalMin{};             /**< Minimum terminal */
+        double terminalMax{};             /**< Maximum terminal */
+
+        double skewness{};                /**< Coefficient d’asymétrie */
+        double kurtosis{};                /**< Coefficient d’aplatissement */
+        double standardError{};           /**< Erreur standard */
+        size_t nPaths{};                  /**< Nombre total de trajectoires */
     };
 
 private:
-    std::shared_ptr<stochastic::StochasticProcess> process_;
-    SimulationConfig config_;
-    std::vector<std::vector<double>> paths_;
-    
+    std::shared_ptr<stochastic::StochasticProcess> process_; /**< Processus simulé */
+    SimulationConfig config_;                                /**< Configuration */
+    std::vector<std::vector<double>> paths_;                 /**< Trajectoires */
+
 public:
+
+    /**
+     * @brief Constructeur du moteur Monte Carlo.
+     * @param process Processus stochastique à simuler.
+     * @param cfg Configuration de simulation.
+     */
     MonteCarloEngine(std::shared_ptr<stochastic::StochasticProcess> process,
-                     const SimulationConfig& config)
-        : process_(process), config_(config) {}
+                     const SimulationConfig& cfg);
 
     /**
-     * Main simulation method - automatically chooses parallel or sequential
+     * @brief Lance la simulation (séquentielle ou parallèle).
+     * @return Les trajectoires simulées.
      */
-    std::vector<std::vector<double>> simulate() {
-        if (config_.nThreads > 1 && config_.nPaths >= config_.nThreads * 10) {
-            return simulateParallel();
-        }
-        return simulateSequential();
-    }
+    std::vector<std::vector<double>> simulate();
 
     /**
-     * Sequential simulation
+     * @brief Renvoie l'ensemble des statistiques calculées.
+     * @return Une structure contenant les statistiques.
+     * @throws std::runtime_error si aucune trajectoire n'a été simulée.
      */
-    std::vector<std::vector<double>> simulateSequential() {
-        paths_.clear();
-        paths_.reserve(config_.nPaths);
-        
-        // Set seed for reproducibility
-        process_->setSeed(config_.seed);
-        
-        for (size_t i = 0; i < config_.nPaths; ++i) {
-            auto path = process_->simulatePath(config_.T, config_.nSteps, config_.useExactScheme);
-            paths_.push_back(path);
-        }
-        
-        // Apply variance reduction if requested
-        if (config_.antitheticVariates) {
-            applyAntitheticVariates();
-        }
-        
-        return paths_;
-    }
+    SimulationStatistics getStatistics() const;
 
     /**
-     * Parallel simulation using std::async
+     * @brief Renvoie un indicateur de convergence (erreur standard / sigma).
      */
-    std::vector<std::vector<double>> simulateParallel() {
-        paths_.clear();
-        paths_.reserve(config_.nPaths);
-        
-        size_t pathsPerThread = config_.nPaths / config_.nThreads;
-        size_t remainder = config_.nPaths % config_.nThreads;
-        
-        std::vector<std::future<std::vector<std::vector<double>>>> futures;
-        
-        size_t currentSeed = config_.seed;
-        
-        for (size_t t = 0; t < config_.nThreads; ++t) {
-            size_t nPathsForThread = pathsPerThread + (t < remainder ? 1 : 0);
-            
-            futures.push_back(std::async(std::launch::async, 
-                [this, nPathsForThread, currentSeed]() {
-                    return simulateBlock(nPathsForThread, currentSeed);
-                }
-            ));
-            
-            currentSeed += nPathsForThread * 1000; // Ensure different seeds
-        }
-        
-        // Collect results
-        for (auto& future : futures) {
-            auto block = future.get();
-            paths_.insert(paths_.end(), block.begin(), block.end());
-        }
-        
-        return paths_;
-    }
+    double estimateConvergence() const;
 
-private:
     /**
-     * Simulate a block of paths (used by parallel execution)
+     * @brief Renvoie les trajectoires simulées.
      */
-    std::vector<std::vector<double>> simulateBlock(size_t nPaths, unsigned long seed) {
-        std::vector<std::vector<double>> block;
-        block.reserve(nPaths);
-        
-        // Create a copy of the process for thread safety
-        auto processCopy = process_->clone();
-        processCopy->setSeed(seed);
-        
-        for (size_t i = 0; i < nPaths; ++i) {
-            auto path = processCopy->simulatePath(config_.T, config_.nSteps, config_.useExactScheme);
-            block.push_back(path);
-        }
-        
-        return block;
-    }
+    const std::vector<std::vector<double>>& getPaths() const;
 
     /**
-     * Apply antithetic variates variance reduction
-     * For each path, create mirror path with negated random shocks
+     * @brief Renvoie la configuration de simulation.
      */
-    void applyAntitheticVariates() {
-        size_t originalSize = paths_.size();
-        paths_.reserve(originalSize * 2);
-        
-        // Note: This is simplified. True implementation would require
-        // storing random numbers during simulation and negating them.
-        // For now, we just generate complementary paths.
-        for (size_t i = 0; i < originalSize; ++i) {
-            // Generate antithetic path
-            auto antitheticPath = process_->simulatePath(config_.T, config_.nSteps, config_.useExactScheme);
-            paths_.push_back(antitheticPath);
-        }
-    }
-
-public:
-    /**
-     * Compute comprehensive statistics
-     */
-    SimulationStatistics getStatistics() const {
-        if (paths_.empty()) {
-            throw std::runtime_error("No paths simulated yet");
-        }
-        
-        SimulationStatistics stats;
-        stats.nPaths = paths_.size();
-        
-        size_t nSteps = paths_[0].size();
-        stats.meanPath.resize(nSteps, 0.0);
-        stats.stdPath.resize(nSteps, 0.0);
-        stats.quantiles05.resize(nSteps);
-        stats.quantiles25.resize(nSteps);
-        stats.quantiles50.resize(nSteps);
-        stats.quantiles75.resize(nSteps);
-        stats.quantiles95.resize(nSteps);
-        
-        // Compute mean path
-        for (const auto& path : paths_) {
-            for (size_t i = 0; i < nSteps; ++i) {
-                stats.meanPath[i] += path[i];
-            }
-        }
-        
-        for (size_t i = 0; i < nSteps; ++i) {
-            stats.meanPath[i] /= paths_.size();
-        }
-        
-        // Compute std path and quantiles
-        for (size_t i = 0; i < nSteps; ++i) {
-            std::vector<double> valuesAtTime;
-            valuesAtTime.reserve(paths_.size());
-            
-            double variance = 0.0;
-            for (const auto& path : paths_) {
-                double diff = path[i] - stats.meanPath[i];
-                variance += diff * diff;
-                valuesAtTime.push_back(path[i]);
-            }
-            
-            stats.stdPath[i] = std::sqrt(variance / paths_.size());
-            
-            // Compute quantiles
-            std::sort(valuesAtTime.begin(), valuesAtTime.end());
-            stats.quantiles05[i] = valuesAtTime[static_cast<size_t>(0.05 * paths_.size())];
-            stats.quantiles25[i] = valuesAtTime[static_cast<size_t>(0.25 * paths_.size())];
-            stats.quantiles50[i] = valuesAtTime[static_cast<size_t>(0.50 * paths_.size())];
-            stats.quantiles75[i] = valuesAtTime[static_cast<size_t>(0.75 * paths_.size())];
-            stats.quantiles95[i] = valuesAtTime[static_cast<size_t>(0.95 * paths_.size())];
-        }
-        
-        // Terminal statistics
-        std::vector<double> terminalValues;
-        terminalValues.reserve(paths_.size());
-        for (const auto& path : paths_) {
-            terminalValues.push_back(path.back());
-        }
-        
-        std::sort(terminalValues.begin(), terminalValues.end());
-        stats.terminalMean = stats.meanPath.back();
-        stats.terminalStd = stats.stdPath.back();
-        stats.terminalMin = terminalValues.front();
-        stats.terminalMax = terminalValues.back();
-        
-        // Compute moments
-        double m3 = 0.0, m4 = 0.0;
-        for (double val : terminalValues) {
-            double z = (val - stats.terminalMean) / stats.terminalStd;
-            m3 += z * z * z;
-            m4 += z * z * z * z;
-        }
-        m3 /= terminalValues.size();
-        m4 /= terminalValues.size();
-        
-        stats.skewness = m3;
-        stats.kurtosis = m4;
-        
-        // Standard error (for convergence)
-        stats.standardError = stats.terminalStd / std::sqrt(paths_.size());
-        
-        return stats;
-    }
+    SimulationConfig getConfig() const;
 
     /**
-     * Estimate convergence rate
-     */
-    double estimateConvergence() const {
-        auto stats = getStatistics();
-        return stats.standardError / stats.terminalStd;
-    }
-
-    /**
-     * Get simulated paths
-     */
-    const std::vector<std::vector<double>>& getPaths() const {
-        return paths_;
-    }
-
-    /**
-     * Get config
-     */
-    SimulationConfig getConfig() const {
-        return config_;
-    }
-
-    /**
-     * Export paths to CSV
+     * @brief Exporte les trajectoires dans un fichier CSV.
+     * @param filename Chemin vers le fichier de sortie.
      */
     void exportToCSV(const std::string& filename) const;
+
+private:
+
+    /**
+     * @brief Simulation mono-thread.
+     */
+    std::vector<std::vector<double>> simulateSequential();
+
+    /**
+     * @brief Simulation multi-thread (std::async).
+     */
+    std::vector<std::vector<double>> simulateParallel();
+
+    /**
+     * @brief Simule un lot de trajectoires (appelé par les threads).
+     * @param nPaths Nombre de trajectoires à simuler.
+     * @param seed Graine séparée pour éviter la corrélation.
+     */
+    std::vector<std::vector<double>> simulateBlock(size_t nPaths, unsigned long seed);
+
+    /**
+     * @brief Applique la technique des antithetic variates.
+     */
+    void applyAntitheticVariates();
 };
 
-#endif // MONTE_CARLO_ENGINE_HPP
