@@ -8,6 +8,7 @@
 
 #include "data/YahooFinanceAPI.hpp"
 #include "calibration/MCMCCalibrator.hpp"
+#include "simulation/MonteCarloEngine.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -31,7 +32,7 @@ void printResult(const MCMCCalibrator::CalibrationResult& res) {
     }
 }
 
-int main() {
+int main2() {
     std::cout << R"(
 ╔═══════════════════════════════════════════════════════════╗
 ║     FRAMEWORK DE SIMULATION STOCHASTIQUE 2025            ║
@@ -141,6 +142,61 @@ Votre choix (1-5) : )";
 
     printResult(result);
     std::cout << "\nCalibration terminée en " << duration.count() << " secondes.\n";
+
+    return 0;
+}
+
+//test du Monte Carlo Engine
+int main() {
+    // ---------------------------------------------------------------
+    // 1) Paramètres du processus GBM
+    // ---------------------------------------------------------------
+    double S0 = 100.0;   // valeur initiale
+    double mu = 0.05;    // drift
+    double sigma = 0.2;  // volatilité
+
+    auto gbm = std::make_shared<stochastic::GeometricBrownianMotion>(S0, mu, sigma);
+
+    // ---------------------------------------------------------------
+    // 2) Configuration de simulation Monte Carlo
+    // ---------------------------------------------------------------
+    MonteCarloEngine::SimulationConfig cfg;
+    cfg.nPaths = 5000;
+    cfg.nSteps = 252;
+    cfg.T = 1.0;
+    cfg.antitheticVariates = true;
+    cfg.useExactScheme = true;
+    cfg.nThreads = 4;
+    cfg.seed = 123;
+
+    MonteCarloEngine engine(gbm, cfg);
+
+    // ---------------------------------------------------------------
+    // 3) Lancement de la simulation
+    // ---------------------------------------------------------------
+    std::cout << "Running Monte Carlo simulation...\n";
+    engine.simulate();
+
+    // ---------------------------------------------------------------
+    // 4) Récupération des statistiques
+    // ---------------------------------------------------------------
+    auto stats = engine.getStatistics();
+
+    std::cout << "\n===== Simulation Results =====\n";
+    std::cout << "Number of paths        : " << stats.nPaths << "\n";
+    std::cout << "Terminal mean          : " << stats.terminalMean << "\n";
+    std::cout << "Terminal stdev         : " << stats.terminalStd << "\n";
+    std::cout << "Terminal min           : " << stats.terminalMin << "\n";
+    std::cout << "Terminal max           : " << stats.terminalMax << "\n";
+    std::cout << "Skewness               : " << stats.skewness << "\n";
+    std::cout << "Kurtosis               : " << stats.kurtosis << "\n";
+    std::cout << "Estimated convergence  : " << stats.standardError << "\n";
+
+    // ---------------------------------------------------------------
+    // 5) (Optionnel) Export CSV
+    // ---------------------------------------------------------------
+    engine.exportToCSV("paths.csv");
+    std::cout << "\nPaths exported to paths.csv\n";
 
     return 0;
 }

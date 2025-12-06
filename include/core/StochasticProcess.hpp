@@ -1,9 +1,7 @@
-// include/core/StochasticProcess.hpp
-#ifndef STOCHASTIC_PROCESS_HPP
-#define STOCHASTIC_PROCESS_HPP
+#pragma once
 
 #include "ProcessParameters.hpp"
-#include "TimeGrid.hpp"          // ← ON UTILISE LA VRAIE CLASSE ICI
+#include "TimeGrid.hpp"         
 #include <vector>
 #include <random>
 #include <memory>
@@ -137,6 +135,4 @@ public:
     }
 };
 
-} // namespace stochastic
-
-#endif // STOCHASTIC_PROCESS_HPP
+} 
