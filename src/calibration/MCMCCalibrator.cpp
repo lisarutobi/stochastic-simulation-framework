@@ -1,10 +1,38 @@
-// src/calibration/MCMCCalibrator.cpp
+/**
+ * @file MCMCCalibrator.cpp
+ * @brief Implémentation d’un calibrateur bayésien par MCMC.
+ *
+ * Ce fichier implémente un algorithme de calibration
+ * Metropolis–Hastings avec covariance adaptative,
+ * permettant d’estimer les paramètres d’un processus
+ * stochastique à partir de données de marché observées.
+ *
+ * Les priors supportés sont :
+ *  - Uniforme
+ *  - Normale
+ *  - Log-normale
+ *
+ * Le calibrateur est générique et fonctionne avec tout
+ * processus dérivant de StochasticProcess et implémentant
+ * clone(), logLikelihood() et validateParameters().
+ */
+
 #include "calibration/MCMCCalibrator.hpp"
 #include <algorithm>
 #include <numeric>
 #include <iostream>
 #include <cmath>
 
+// ============================================================================
+// PRIOR — DENSITÉS ET SUPPORT
+// ============================================================================
+
+/**
+ * @brief Calcule la log-densité du prior pour une valeur donnée.
+ *
+ * @param x Valeur du paramètre
+ * @return Log-densité du prior ou -∞ si hors support
+ */
 double MCMCCalibrator::Prior::logDensity(double x) const {
     switch(type) {
         case Type::UNIFORM: {
@@ -20,191 +48,432 @@ double MCMCCalibrator::Prior::logDensity(double x) const {
             if (x <= 0) return -INFINITY;
             double mu = parameters[0], sigma = parameters[1];
             double z = (std::log(x) - mu) / sigma;
-            return -std::log(x) - 0.5 * std::log(2 * M_PI * sigma * sigma) - 0.5 * z * z;
+            return -std::log(x)
+                 - 0.5 * std::log(2 * M_PI * sigma * sigma)
+                 - 0.5 * z * z;
         }
-        default: return 0.0;
+        default:
+            return 0.0;
     }
 }
 
+/**
+ * @brief Vérifie si une valeur appartient au support du prior.
+ *
+ * @param x Valeur du paramètre
+ * @return true si x est dans le support, false sinon
+ */
 bool MCMCCalibrator::Prior::inSupport(double x) const {
     switch(type) {
-        case Type::UNIFORM: return x >= parameters[0] && x <= parameters[1];
-        case Type::NORMAL: return true;
+        case Type::UNIFORM:   return x >= parameters[0] && x <= parameters[1];
+        case Type::NORMAL:    return true;
         case Type::LOGNORMAL: return x > 0;
-        default: return true;
+        default:              return true;
     }
 }
 
-MCMCCalibrator::MCMCCalibrator(std::shared_ptr<stochastic::StochasticProcess> process,
-                               const TimeSeriesData& data,
-                               const MCMCConfig& config)
-    : process_(process), observedData_(data), config_(config),
-      rng_(std::random_device{}()), normalDist_(0.0,1.0), nAccepted_(0)
+// ============================================================================
+// CONSTRUCTEUR
+// ============================================================================
+
+/**
+ * @brief Constructeur du calibrateur MCMC.
+ *
+ * @param process Processus stochastique à calibrer
+ * @param data Données observées (trajectoire et pas de temps)
+ * @param config Configuration MCMC
+ */
+MCMCCalibrator::MCMCCalibrator(
+    std::shared_ptr<stochastic::StochasticProcess> process,
+    const TimeSeriesData& data,
+    const MCMCConfig& config
+)
+    : process_(process),
+      observedData_(data),
+      config_(config),
+      rng_(std::random_device{}()),
+      normalDist_(0.0,1.0),
+      nAccepted_(0)
 {
     size_t nParams = process_->getParameterNames().size();
-    proposalCovariance_ = Eigen::MatrixXd::Identity(nParams, nParams) * config_.initialStepSize*config_.initialStepSize;
+
+    // Initialisation de la covariance de proposition
+    proposalCovariance_ =
+        Eigen::MatrixXd::Identity(nParams, nParams)
+        * config_.initialStepSize
+        * config_.initialStepSize;
 }
 
-MCMCCalibrator::CalibrationResult MCMCCalibrator::calibrateFromMarketData() {
+// ============================================================================
+// INTERFACE PRINCIPALE
+// ============================================================================
+
+/**
+ * @brief Lance la calibration complète à partir des données de marché.
+ *
+ * @return Résultat de calibration (statistiques postérieures)
+ */
+MCMCCalibrator::CalibrationResult
+MCMCCalibrator::calibrateFromMarketData() {
     initializeParameters();
     runMetropolisHastings();
     return processResults();
 }
 
+// ============================================================================
+// INITIALISATION
+// ============================================================================
+
+/**
+ * @brief Initialise les paramètres à partir des priors.
+ *
+ * Si aucun prior n’est spécifié pour un paramètre,
+ * une valeur par défaut est utilisée.
+ */
 void MCMCCalibrator::initializeParameters() {
     auto names = process_->getParameterNames();
     currentParams_.resize(names.size());
-    for(size_t i=0;i<names.size();++i){
-        if(config_.priors.count(names[i])) currentParams_[i] = sampleFromPrior(config_.priors.at(names[i]));
-        else currentParams_[i] = 0.1;
+
+    for(size_t i = 0; i < names.size(); ++i) {
+        if(config_.priors.count(names[i]))
+            currentParams_[i] =
+                sampleFromPrior(config_.priors.at(names[i]));
+        else
+            currentParams_[i] = 0.1;
     }
+
     process_->setParametersVector(currentParams_);
 }
 
+/**
+ * @brief Tire un échantillon depuis un prior donné.
+ *
+ * @param prior Prior du paramètre
+ * @return Valeur échantillonnée
+ */
 double MCMCCalibrator::sampleFromPrior(const Prior& prior) {
-    switch(prior.type){
+    switch(prior.type) {
         case Prior::Type::UNIFORM:
-            return prior.parameters[0] + (prior.parameters[1]-prior.parameters[0])*std::uniform_real_distribution<>(0,1)(rng_);
+            return prior.parameters[0]
+                 + (prior.parameters[1] - prior.parameters[0])
+                   * std::uniform_real_distribution<>(0,1)(rng_);
+
         case Prior::Type::NORMAL:
-            return prior.parameters[0] + prior.parameters[1]*normalDist_(rng_);
+            return prior.parameters[0]
+                 + prior.parameters[1] * normalDist_(rng_);
+
         case Prior::Type::LOGNORMAL:
-            return exp(prior.parameters[0] + prior.parameters[1]*normalDist_(rng_));
-        default: return 0.1;
+            return std::exp(
+                prior.parameters[0]
+              + prior.parameters[1] * normalDist_(rng_)
+            );
+
+        default:
+            return 0.1;
     }
 }
 
+// ============================================================================
+// METROPOLIS–HASTINGS
+// ============================================================================
+
+/**
+ * @brief Exécute la chaîne Metropolis–Hastings.
+ *
+ * Implémente :
+ *  - proposition gaussienne multivariée
+ *  - test d’acceptation MH
+ *  - adaptation de la covariance (Haario et al.)
+ */
 void MCMCCalibrator::runMetropolisHastings() {
     chain_.clear();
     chain_.reserve(config_.nIterations);
-    double currentLogPosterior = computeLogPosterior(currentParams_);
 
-    for(size_t iter=0; iter<config_.nIterations; ++iter){
+    double currentLogPosterior =
+        computeLogPosterior(currentParams_);
+
+    for(size_t iter = 0; iter < config_.nIterations; ++iter) {
+
         auto proposed = proposeParameters(currentParams_);
-        if(!inPriorSupport(proposed)){
+
+        if(!inPriorSupport(proposed)) {
             chain_.push_back(currentParams_);
             continue;
         }
-        double logPosteriorProposed = computeLogPosterior(proposed);
-        double logAlpha = logPosteriorProposed - currentLogPosterior;
-        bool accept = false;
-        if(logAlpha >= 0 || log(std::uniform_real_distribution<>(0,1)(rng_)) < logAlpha){
+
+        double logPosteriorProposed =
+            computeLogPosterior(proposed);
+
+        double logAlpha =
+            logPosteriorProposed - currentLogPosterior;
+
+        if(logAlpha >= 0 ||
+           std::log(std::uniform_real_distribution<>(0,1)(rng_)) < logAlpha) {
+
             currentParams_ = proposed;
             currentLogPosterior = logPosteriorProposed;
-            accept = true;
             ++nAccepted_;
         }
+
         chain_.push_back(currentParams_);
-        if(config_.adaptiveProposal && iter>0 && iter<config_.burnIn && iter%config_.adaptationWindow==0){
+
+        if(config_.adaptiveProposal &&
+           iter > 0 &&
+           iter < config_.burnIn &&
+           iter % config_.adaptationWindow == 0) {
+
             adaptProposal(iter);
         }
     }
 }
 
-std::vector<double> MCMCCalibrator::proposeParameters(const std::vector<double>& current){
+// ============================================================================
+// PROPOSITION ET ADAPTATION
+// ============================================================================
+
+/**
+ * @brief Propose un nouveau vecteur de paramètres.
+ *
+ * @param current Paramètres courants
+ * @return Paramètres proposés
+ */
+std::vector<double>
+MCMCCalibrator::proposeParameters(
+    const std::vector<double>& current
+) {
     size_t n = current.size();
     std::vector<double> proposal(n);
+
     Eigen::VectorXd currentVec(n), z(n);
-    for(size_t i=0;i<n;++i) currentVec(i) = current[i];
-    for(size_t i=0;i<n;++i) z(i) = normalDist_(rng_);
+    for(size_t i = 0; i < n; ++i)
+        currentVec(i) = current[i];
+
+    for(size_t i = 0; i < n; ++i)
+        z(i) = normalDist_(rng_);
+
     Eigen::LLT<Eigen::MatrixXd> llt(proposalCovariance_);
-    Eigen::VectorXd proposalVec = currentVec + llt.matrixL()*z;
-    for(size_t i=0;i<n;++i) proposal[i] = proposalVec(i);
+    Eigen::VectorXd proposalVec =
+        currentVec + llt.matrixL() * z;
+
+    for(size_t i = 0; i < n; ++i)
+        proposal[i] = proposalVec(i);
+
     return proposal;
 }
 
-void MCMCCalibrator::adaptProposal(size_t iter){
-    size_t startIdx = (iter>1000)?iter-1000:0;
+/**
+ * @brief Adapte la covariance de proposition.
+ *
+ * Basée sur l’estimation empirique de la covariance
+ * de la chaîne (Haario et al., 2001).
+ *
+ * @param iter Itération courante
+ */
+void MCMCCalibrator::adaptProposal(size_t iter) {
+    size_t startIdx = (iter > 1000) ? iter - 1000 : 0;
     size_t n = iter - startIdx;
     size_t d = currentParams_.size();
-    if(n<2) return;
+
+    if(n < 2) return;
+
     Eigen::VectorXd mean = Eigen::VectorXd::Zero(d);
-    for(size_t i=startIdx;i<iter;++i) for(size_t j=0;j<d;++j) mean(j)+=chain_[i][j];
+    for(size_t i = startIdx; i < iter; ++i)
+        for(size_t j = 0; j < d; ++j)
+            mean(j) += chain_[i][j];
     mean /= n;
-    Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(d,d);
-    for(size_t i=startIdx;i<iter;++i){
+
+    Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(d, d);
+    for(size_t i = startIdx; i < iter; ++i) {
         Eigen::VectorXd diff(d);
-        for(size_t j=0;j<d;++j) diff(j)=chain_[i][j]-mean(j);
-        cov+=diff*diff.transpose();
+        for(size_t j = 0; j < d; ++j)
+            diff(j) = chain_[i][j] - mean(j);
+        cov += diff * diff.transpose();
     }
-    cov/=(n-1);
-    double scale = 2.38*2.38/d;
-    proposalCovariance_ = scale*cov + 1e-6*Eigen::MatrixXd::Identity(d,d);
+    cov /= (n - 1);
+
+    double scale = 2.38 * 2.38 / d;
+    proposalCovariance_ =
+        scale * cov
+      + 1e-6 * Eigen::MatrixXd::Identity(d, d);
 }
 
-double MCMCCalibrator::computeLogLikelihood(const std::vector<double>& params) const {
+// ============================================================================
+// LOG-VRAISEMBLANCE ET PRIOR
+// ============================================================================
+
+/**
+ * @brief Calcule la log-vraisemblance du modèle.
+ *
+ * @param params Paramètres du processus
+ * @return Log-vraisemblance ou -∞ si échec
+ */
+double MCMCCalibrator::computeLogLikelihood(
+    const std::vector<double>& params
+) const {
     auto copy = process_->clone();
+
     try {
         copy->setParametersVector(params);
-        // On force la validité
         copy->validateParameters();
-        double ll = copy->logLikelihood(observedData_.path, observedData_.dt);
+
+        double ll =
+            copy->logLikelihood(
+                observedData_.path,
+                observedData_.dt
+            );
+
         return std::isfinite(ll) ? ll : -INFINITY;
-    } catch (...) {
+    }
+    catch (...) {
         return -INFINITY;
     }
 }
 
-double MCMCCalibrator::computeLogPrior(const std::vector<double>& params) const {
-    double logP=0.0;
+/**
+ * @brief Calcule la log-densité a priori.
+ *
+ * @param params Paramètres du processus
+ * @return Log-prior
+ */
+double MCMCCalibrator::computeLogPrior(
+    const std::vector<double>& params
+) const {
+    double logP = 0.0;
     auto names = process_->getParameterNames();
-    for(size_t i=0;i<params.size();++i){
-        if(config_.priors.count(names[i])) logP+=config_.priors.at(names[i]).logDensity(params[i]);
+
+    for (size_t i = 0; i < params.size(); ++i) {
+        if (config_.priors.count(names[i])) {
+            logP +=
+                config_.priors.at(names[i])
+                .logDensity(params[i]);
+        }
     }
     return logP;
 }
 
-double MCMCCalibrator::computeLogPosterior(const std::vector<double>& params) const{
-    return computeLogLikelihood(params)+computeLogPrior(params);
+/**
+ * @brief Calcule la log-posterior (prior + vraisemblance).
+ */
+double MCMCCalibrator::computeLogPosterior(
+    const std::vector<double>& params
+) const {
+    return computeLogLikelihood(params)
+         + computeLogPrior(params);
 }
 
-bool MCMCCalibrator::inPriorSupport(const std::vector<double>& params) const{
+/**
+ * @brief Vérifie que tous les paramètres sont dans le support des priors.
+ */
+bool MCMCCalibrator::inPriorSupport(
+    const std::vector<double>& params
+) const {
     auto names = process_->getParameterNames();
-    for(size_t i=0;i<params.size();++i){
-        if(config_.priors.count(names[i]) && !config_.priors.at(names[i]).inSupport(params[i]))
+
+    for (size_t i = 0; i < params.size(); ++i) {
+        if (config_.priors.count(names[i]) &&
+            !config_.priors.at(names[i])
+                .inSupport(params[i])) {
             return false;
+        }
     }
     return true;
 }
 
-MCMCCalibrator::CalibrationResult MCMCCalibrator::processResults(){
+// ============================================================================
+// POST-TRAITEMENT DES RÉSULTATS
+// ============================================================================
+
+/**
+ * @brief Traite la chaîne MCMC et calcule les statistiques postérieures.
+ */
+MCMCCalibrator::CalibrationResult
+MCMCCalibrator::processResults() {
     CalibrationResult res;
+
     std::vector<std::vector<double>> samples;
-    for(size_t i=config_.burnIn;i<chain_.size();i+=config_.thinning) samples.push_back(chain_[i]);
-    auto names = process_->getParameterNames();
-    for(size_t i=0;i<names.size();++i){
-        res.meanParams[names[i]] = computeMean(samples,i);
-        res.medianParams[names[i]] = computeMedian(samples,i);
-        res.credibleIntervals95[names[i]] = computeCredibleInterval(samples,i,0.95);
+    for (size_t i = config_.burnIn;
+         i < chain_.size();
+         i += config_.thinning) {
+
+        samples.push_back(chain_[i]);
     }
-    res.acceptanceRate = static_cast<double>(nAccepted_)/config_.nIterations;
+
+    auto names = process_->getParameterNames();
+
+    for (size_t i = 0; i < names.size(); ++i) {
+        res.meanParams[names[i]] =
+            computeMean(samples, i);
+
+        res.medianParams[names[i]] =
+            computeMedian(samples, i);
+
+        res.credibleIntervals95[names[i]] =
+            computeCredibleInterval(samples, i, 0.95);
+    }
+
+    res.acceptanceRate =
+        static_cast<double>(nAccepted_) /
+        config_.nIterations;
+
     res.effectiveSampleSize = samples.size();
     res.gelmanRubinStatistic = 1.0;
-    res.logLikelihood = computeLogLikelihood(currentParams_);
+
+    res.logLikelihood =
+        computeLogLikelihood(currentParams_);
+
     size_t nParams = names.size();
     size_t nObs = observedData_.path.size();
-    res.AIC = -2*res.logLikelihood + 2*nParams;
-    res.BIC = -2*res.logLikelihood + nParams*log(nObs);
+
+    res.AIC = -2 * res.logLikelihood + 2 * nParams;
+    res.BIC = -2 * res.logLikelihood + nParams * std::log(nObs);
     res.DIC = res.AIC;
+
     return res;
 }
 
-double MCMCCalibrator::computeMean(const std::vector<std::vector<double>>& samples, size_t idx) const {
-    double sum=0.0;
-    for(const auto& s:samples) sum+=s[idx];
-    return sum/samples.size();
+// ============================================================================
+// STATISTIQUES UTILITAIRES
+// ============================================================================
+
+double MCMCCalibrator::computeMean(
+    const std::vector<std::vector<double>>& samples,
+    size_t idx
+) const {
+    double sum = 0.0;
+    for (const auto& s : samples)
+        sum += s[idx];
+    return sum / samples.size();
 }
 
-double MCMCCalibrator::computeMedian(const std::vector<std::vector<double>>& samples, size_t idx) const {
-    std::vector<double> v; for(const auto& s:samples) v.push_back(s[idx]);
-    std::sort(v.begin(),v.end());
-    return v[v.size()/2];
+double MCMCCalibrator::computeMedian(
+    const std::vector<std::vector<double>>& samples,
+    size_t idx
+) const {
+    std::vector<double> v;
+    for (const auto& s : samples)
+        v.push_back(s[idx]);
+
+    std::sort(v.begin(), v.end());
+    return v[v.size() / 2];
 }
 
-std::pair<double,double> MCMCCalibrator::computeCredibleInterval(const std::vector<std::vector<double>>& samples, size_t idx, double level) const {
-    std::vector<double> v; for(const auto& s:samples) v.push_back(s[idx]);
-    std::sort(v.begin(),v.end());
+std::pair<double,double>
+MCMCCalibrator::computeCredibleInterval(
+    const std::vector<std::vector<double>>& samples,
+    size_t idx,
+    double level
+) const {
+    std::vector<double> v;
+    for (const auto& s : samples)
+        v.push_back(s[idx]);
+
+    std::sort(v.begin(), v.end());
+
     double alpha = 1.0 - level;
-    size_t l = static_cast<size_t>(alpha/2.0*v.size());
-    size_t u = static_cast<size_t>((1.0-alpha/2.0)*v.size());
-    return {v[l],v[u]};
+    size_t l =
+        static_cast<size_t>(alpha / 2.0 * v.size());
+    size_t u =
+        static_cast<size_t>((1.0 - alpha / 2.0) * v.size());
+
+    return { v[l], v[u] };
 }

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libstochastic_framework.a CMakeFiles/stochastic_framework.dir/src/calibration/MCMCCalibrator.cpp.o CMakeFiles/stochastic_framework.dir/src/data/DataPreprocessor.cpp.o CMakeFiles/stochastic_framework.dir/src/data/MarketDataLoader.cpp.o CMakeFiles/stochastic_framework.dir/src/data/YahooFinanceAPI.cpp.o CMakeFiles/stochastic_framework.dir/src/simulation/MonteCarloEngine.cpp.o
+/usr/bin/ranlib libstochastic_framework.a
