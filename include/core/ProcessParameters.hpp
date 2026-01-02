@@ -57,10 +57,7 @@ public:
     }
 };
 
-// ============================================================================
-// PARAMÈTRES SPÉCIFIQUES PAR PROCESSUS
-// ============================================================================
-
+// paramètres spécifiques pour différents processus stochastiques
 /**
  * @brief Paramètres pour Geometric Brownian Motion (GBM)
  * SDE: dS_t = μ*S_t*dt + σ*S_t*dW_t
@@ -117,7 +114,7 @@ public:
     double getMu() const { return params_.at("mu"); }
     double getSigma() const { return params_.at("sigma"); }
     
-    // Half-life de mean-reversion : temps pour parcourir 50% de la distance vers μ
+    // Half-life de mean-reversion, i.e temps pour parcourir 50% de la distance vers μ
     double getHalfLife() const { 
         return std::log(2.0) / params_.at("theta"); 
     }

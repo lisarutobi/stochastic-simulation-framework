@@ -13,9 +13,6 @@
  * Ces étapes sont cruciales pour garantir la stabilité
  * numérique des estimateurs statistiques et des méthodes
  * de calibration probabilistes.
- *
- * @author —
- * @date 2025
  */
 
 #include <data/DataPreprocessor.hpp>
@@ -25,10 +22,7 @@
 #include <cmath>
 #include <iostream>
 
-// ============================================================================
-// CALCUL DES RENDEMENTS
-// ============================================================================
-
+// Calcul des rendements
 /**
  * @brief Calcule les rendements à partir des prix.
  *
@@ -75,10 +69,8 @@ DataPreprocessor::computeReturns(
     return result;
 }
 
-// ============================================================================
-// SUPPRESSION DES OUTLIERS
-// ============================================================================
 
+// Suppression des outliers
 /**
  * @brief Supprime les outliers de type spike isolé.
  *
@@ -174,10 +166,7 @@ void DataPreprocessor::removeOutliers(
     );
 }
 
-// ============================================================================
-// DONNÉES MANQUANTES
-// ============================================================================
-
+// Données manquantes
 /**
  * @brief Gère les données de prix manquantes.
  *

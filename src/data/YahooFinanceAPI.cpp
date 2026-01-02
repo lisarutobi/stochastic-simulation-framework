@@ -17,10 +17,7 @@
 
 using json = nlohmann::json;
 
-// ============================================================================
-// FONCTIONS INTERNES
-// ============================================================================
-
+// Fonctions internes
 namespace {
 
 /**
@@ -64,10 +61,7 @@ uint64_t dateToUnixTimestamp(const std::string& date) {
 
 } // namespace
 
-// ============================================================================
-// API PRINCIPALE
-// ============================================================================
-
+// API principale
 /**
  * @brief Télécharge les données historiques d’un actif.
  *

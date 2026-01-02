@@ -12,9 +12,8 @@
 using Catch::Approx;
 using namespace stochastic;
 
-//--------------------------------------------
-//     GEOMETRIC BROWNIAN MOTION
-//--------------------------------------------
+
+// GMB
 TEST_CASE("GBM next step is positive", "[GBM]") {
     stochastic::GeometricBrownianMotion gbm(100.0, 0.05, 0.2, 42);
     double dt = 1.0 / 252.0;
@@ -33,10 +32,7 @@ TEST_CASE("GBM simulatePathExact works", "[GBM]") {
     REQUIRE(gbm.theoreticalMean(1.0) == Approx(100 * std::exp(0.05)).margin(1e-2));
 }
 
-
-//--------------------------------------------
-//                HESTON MODEL
-//--------------------------------------------
+// Heston
 TEST_CASE("Heston parameters are validated/corrected", "[Heston]") {
     stochastic::HestonModel heston(
         100.0, 0.05, -1.0, 0.04, 0.3, -0.7, 0.04, 42
@@ -56,10 +52,7 @@ TEST_CASE("Heston next step keeps variance positive", "[Heston]") {
     REQUIRE(spot > 0.0);
 }
 
-
-//--------------------------------------------
-//      COX-INGERSOLL-ROSS (CIR)
-//--------------------------------------------
+// CIR
 TEST_CASE("CIR next step stays positive", "[CIR]") {
     stochastic::CoxIngersollRoss cir(
         0.04, 1.0, 0.05, 0.1, 42
@@ -77,10 +70,7 @@ TEST_CASE("CIR simulatePath returns correct size", "[CIR]") {
     REQUIRE(path.size() == 11);
 }
 
-
-//--------------------------------------------
-//        ORNSTEIN–UHLENBECK (OU)
-//--------------------------------------------
+// OU
 TEST_CASE("OU next step is finite", "[OU]") {
     stochastic::OrnsteinUhlenbeck ou(0.0, 1.0, 1.0, 0.3, 42);
 
@@ -96,10 +86,7 @@ TEST_CASE("OU simulatePath returns correct size", "[OU]") {
     REQUIRE(path.size() == 21);
 }
 
-
-//--------------------------------------------
-//     FRACTIONAL BROWNIAN MOTION (fBM)
-//--------------------------------------------
+// fBM
 TEST_CASE("fBM Hurst parameter is in (0,1)", "[fBM]") {
     stochastic::FractionalBrownianMotion fbm(0.75, 42);
 
@@ -115,10 +102,7 @@ TEST_CASE("fBM simulatePath returns correct size", "[fBM]") {
     REQUIRE(path.size() == 9);
 }
 
-
-//--------------------------------------------
-//        LEVY JUMP DIFFUSION
-//--------------------------------------------
+// Levy
 TEST_CASE("Levy next step stays positive", "[Levy]") {
     stochastic::LevyJumpDiffusion lev(
         100.0, 0.05, 0.2, 0.1, -0.1, 0.2, 42

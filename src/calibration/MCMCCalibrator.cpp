@@ -23,10 +23,7 @@
 #include <iostream>
 #include <cmath>
 
-// ============================================================================
-// PRIOR — DENSITÉS ET SUPPORT
-// ============================================================================
-
+// prior densité et support
 /**
  * @brief Calcule la log-densité du prior pour une valeur donnée.
  *
@@ -72,10 +69,7 @@ bool MCMCCalibrator::Prior::inSupport(double x) const {
     }
 }
 
-// ============================================================================
-// CONSTRUCTEUR
-// ============================================================================
-
+// Constructeur
 /**
  * @brief Constructeur du calibrateur MCMC.
  *
@@ -104,10 +98,7 @@ MCMCCalibrator::MCMCCalibrator(
         * config_.initialStepSize;
 }
 
-// ============================================================================
-// INTERFACE PRINCIPALE
-// ============================================================================
-
+// Interface principale
 /**
  * @brief Lance la calibration complète à partir des données de marché.
  *
@@ -120,10 +111,8 @@ MCMCCalibrator::calibrateFromMarketData() {
     return processResults();
 }
 
-// ============================================================================
-// INITIALISATION
-// ============================================================================
 
+// initialisation
 /**
  * @brief Initialise les paramètres à partir des priors.
  *
@@ -173,10 +162,7 @@ double MCMCCalibrator::sampleFromPrior(const Prior& prior) {
     }
 }
 
-// ============================================================================
-// METROPOLIS–HASTINGS
-// ============================================================================
-
+// Metropolis–Hastings
 /**
  * @brief Exécute la chaîne Metropolis–Hastings.
  *
@@ -227,10 +213,7 @@ void MCMCCalibrator::runMetropolisHastings() {
     }
 }
 
-// ============================================================================
-// PROPOSITION ET ADAPTATION
-// ============================================================================
-
+// Proposition et adaptation
 /**
  * @brief Propose un nouveau vecteur de paramètres.
  *
@@ -297,10 +280,8 @@ void MCMCCalibrator::adaptProposal(size_t iter) {
       + 1e-6 * Eigen::MatrixXd::Identity(d, d);
 }
 
-// ============================================================================
-// LOG-VRAISEMBLANCE ET PRIOR
-// ============================================================================
 
+// log vraisemblance et prior
 /**
  * @brief Calcule la log-vraisemblance du modèle.
  *
@@ -379,10 +360,7 @@ bool MCMCCalibrator::inPriorSupport(
     return true;
 }
 
-// ============================================================================
-// POST-TRAITEMENT DES RÉSULTATS
-// ============================================================================
-
+// Post traitement des resultats
 /**
  * @brief Traite la chaîne MCMC et calcule les statistiques postérieures.
  */
@@ -431,10 +409,7 @@ MCMCCalibrator::processResults() {
     return res;
 }
 
-// ============================================================================
-// STATISTIQUES UTILITAIRES
-// ============================================================================
-
+// Statistiques utilitaires
 double MCMCCalibrator::computeMean(
     const std::vector<std::vector<double>>& samples,
     size_t idx

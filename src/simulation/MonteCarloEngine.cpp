@@ -1,7 +1,6 @@
 /**
  * @file MonteCarloEngine.cpp
  * @brief Implémentation du moteur Monte Carlo générique.
- * @version 1.0
  */
 
 #include "simulation/MonteCarloEngine.hpp"
@@ -10,10 +9,7 @@
 #include <iostream>
 #include <numeric>
 
-// =====================================================================
-// CONSTRUCTEUR
-// =====================================================================
-
+// Constructeur
 /**
  * @brief Constructeur du moteur Monte Carlo.
  * @param process Processus stochastique simulé.
@@ -26,10 +22,7 @@ MonteCarloEngine::MonteCarloEngine(
     : process_(std::move(process)), config_(cfg)
 {}
 
-// =====================================================================
-// FONCTION PRINCIPALE DE SIMULATION
-// =====================================================================
-
+// Fonction principale de simulation
 /**
  * @brief Lance la simulation Monte Carlo (choisit automatiquement parallèle ou séquentiel).
  * @return Toutes les trajectoires simulées.
@@ -40,10 +33,7 @@ std::vector<std::vector<double>> MonteCarloEngine::simulate() {
     return simulateSequential();
 }
 
-// =====================================================================
-// SIMULATION SÉQUENTIELLE
-// =====================================================================
-
+// Simulation sequentielle
 /**
  * @brief Simulation mono-thread.
  */
@@ -65,10 +55,7 @@ std::vector<std::vector<double>> MonteCarloEngine::simulateSequential() {
     return paths_;
 }
 
-// =====================================================================
-// SIMULATION PARALLÈLE
-// =====================================================================
-
+// Simulation parallèle
 /**
  * @brief Simulation multi-thread avec std::async.
  */
@@ -104,10 +91,7 @@ std::vector<std::vector<double>> MonteCarloEngine::simulateParallel() {
     return paths_;
 }
 
-// =====================================================================
-// SIMULATION D’UN BLOC (POUR PARALLÉLISME)
-// =====================================================================
-
+// Simulation d'un bloc (pour le parallèlisme)
 /**
  * @brief Simule un groupe de trajectoires (thread-safe).
  * @param nPaths Nombre de trajectoires.
@@ -130,10 +114,7 @@ std::vector<std::vector<double>> MonteCarloEngine::simulateBlock(
     return block;
 }
 
-// =====================================================================
-// ANTITHETIC VARIATES
-// =====================================================================
-
+// antithetic variates
 /**
  * @brief Double le nombre de trajectoires en générant des copies antithétiques.
  */
@@ -147,10 +128,8 @@ void MonteCarloEngine::applyAntitheticVariates() {
         );
 }
 
-// =====================================================================
-// STATISTIQUES
-// =====================================================================
 
+// statistiques
 /**
  * @brief Calcule toutes les statistiques : moyennes, variances, quantiles, moments…
  */
@@ -171,9 +150,7 @@ MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
     S.quant75.resize(n);
     S.quant95.resize(n);
 
-    // ------------------------------
     // Moyenne
-    // ------------------------------
     for (const auto &p : paths_)
         for (size_t i = 0; i < n; ++i)
             S.meanPath[i] += p[i];
@@ -181,9 +158,7 @@ MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
     for (double &m : S.meanPath)
         m /= S.nPaths;
 
-    // ------------------------------
     // Écart-types + quantiles
-    // ------------------------------
     for (size_t i = 0; i < n; ++i) {
         std::vector<double> v;
         v.reserve(S.nPaths);
@@ -210,9 +185,7 @@ MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
         S.quant95[i] = q(0.95);
     }
 
-    // ------------------------------
     // Statistiques terminales
-    // ------------------------------
     std::vector<double> terminal;
     terminal.reserve(S.nPaths);
     for (const auto &p : paths_) terminal.push_back(p.back());
@@ -246,10 +219,7 @@ double MonteCarloEngine::estimateConvergence() const {
     return S.standardError / S.terminalStd;
 }
 
-// =====================================================================
-// EXPORT CSV
-// =====================================================================
-
+// export csv
 /**
  * @brief Exporte les trajectoires dans un fichier CSV.
  */

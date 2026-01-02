@@ -13,10 +13,7 @@
 
 using Catch::Approx;
 
-// ----------------------------------------------------------------------
 // 1. Tests des paramètres invalides
-// ----------------------------------------------------------------------
-
 TEST_CASE("YahooFinanceAPI - Invalid date format throws", "[YahooFinanceAPI]") {
     REQUIRE_THROWS_AS(
         YahooFinanceAPI::downloadHistoricalData("AAPL", "2023-13-01", "2023-01-10", "1d"),
@@ -31,10 +28,7 @@ TEST_CASE("YahooFinanceAPI - Empty ticker throws", "[YahooFinanceAPI]") {
     );
 }
 
-// ----------------------------------------------------------------------
 // 2. Test offline avec JSON mocké
-// ----------------------------------------------------------------------
-
 TEST_CASE("YahooFinanceAPI - Parse mocked Yahoo JSON", "[YahooFinanceAPI]") {
 
     std::string mockJson = R"({
@@ -78,10 +72,7 @@ TEST_CASE("YahooFinanceAPI - Parse mocked Yahoo JSON", "[YahooFinanceAPI]") {
     REQUIRE(data.prices[1] == Approx(132.2).margin(1e-6));
 }
 
-// ----------------------------------------------------------------------
 // 3. Test du comportement en cas d'erreur API Yahoo
-// ----------------------------------------------------------------------
-
 TEST_CASE("YahooFinanceAPI - API error JSON is detected", "[YahooFinanceAPI]") {
 
     std::string mockJson = R"({
@@ -96,10 +87,7 @@ TEST_CASE("YahooFinanceAPI - API error JSON is detected", "[YahooFinanceAPI]") {
     REQUIRE(j["chart"]["error"].is_object());
 }
 
-// ----------------------------------------------------------------------
 // 4. Test live réseau (désactivé)
-// ----------------------------------------------------------------------
-
 TEST_CASE("YahooFinanceAPI - Live API call (disabled)", "[hide][manual]") {
 
     auto data = YahooFinanceAPI::downloadHistoricalData(

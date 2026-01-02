@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <catch2/catch_approx.hpp>
 
 #include "../include/calibration/MCMCCalibrator.hpp"
 #include "../include/processes/GeometricBrownianMotion.hpp"
@@ -9,9 +8,7 @@
 using namespace stochastic;
 using Catch::Approx;
 
-// ============================================================================
 // Test 1 : Calibration complète sur un GBM avec données simulées
-// ============================================================================
 TEST_CASE("MCMCCalibrator - Calibrate GBM with simulated data", "[MCMCCalibrator]")
 {
     GeometricBrownianMotion trueProcess(100.0, 0.08, 0.25, 12345);
@@ -72,9 +69,7 @@ TEST_CASE("MCMCCalibrator - Calibrate GBM with simulated data", "[MCMCCalibrator
     REQUIRE(result.logLikelihood > -1e6);
 }
 
-// ============================================================================
 // Test 2 : LogLikelihood cohérent
-// ============================================================================
 TEST_CASE("MCMCCalibrator - LogLikelihood consistency", "[MCMCCalibrator]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.07, 0.22);
@@ -91,9 +86,7 @@ TEST_CASE("MCMCCalibrator - LogLikelihood consistency", "[MCMCCalibrator]")
     REQUIRE(llTrue > llWrong);
 }
 
-// ============================================================================
 // Test 3 : Priors très informatifs → domination du prior
-// ============================================================================
 TEST_CASE("MCMCCalibrator - Strong prior dominates likelihood", "[MCMCCalibrator]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.05, 0.2);
@@ -117,9 +110,7 @@ TEST_CASE("MCMCCalibrator - Strong prior dominates likelihood", "[MCMCCalibrator
     REQUIRE(result.meanParams.at("sigma") == Approx(0.18).margin(0.03));
 }
 
-// ============================================================================
 // Test 4 : sigma ≤ 0 → logLik = -inf
-// ============================================================================
 TEST_CASE("MCMCCalibrator - Invalid parameters give -inf likelihood", "[MCMCCalibrator]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.05, 0.2);

@@ -24,10 +24,7 @@ private:
     std::vector<double> times_;  // Grille complète [t0, t1, ..., tN]
     
 public:
-    // ========================================================================
-    // CONSTRUCTEURS
-    // ========================================================================
-    
+    // constructeurs
     /**
      * @brief Constructeur avec pas de temps régulier
      * @param t0 Temps initial (généralement 0.0)
@@ -79,10 +76,8 @@ public:
         dt_ = (T_ - t0_) / nSteps_;
     }
     
-    // ========================================================================
-    // ACCESSEURS
-    // ========================================================================
-    
+
+    // accesseurs
     double getInitialTime() const { return t0_; }
     double getFinalTime() const { return T_; }
     double getTimeStep() const { return dt_; }
@@ -115,10 +110,8 @@ public:
      */
     const std::vector<double>& getTimes() const { return times_; }
     
-    // ========================================================================
-    // MÉTHODES UTILES
-    // ========================================================================
-    
+
+    // méthodes utilitaires
     /**
      * @brief Vérifier si la grille est régulière (pas constant)
      */

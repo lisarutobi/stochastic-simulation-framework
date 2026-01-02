@@ -12,9 +12,8 @@
 using namespace stochastic;
 using Catch::Approx;
 
-// =============================================================================
+
 // Test 1 : Simulation basique GBM + contrôle du résultat théorique
-// =============================================================================
 TEST_CASE("Simulate GBM - basic test", "[MonteCarloEngine]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.08, 0.25, 12345);
@@ -46,9 +45,7 @@ TEST_CASE("Simulate GBM - basic test", "[MonteCarloEngine]")
     REQUIRE(std::abs(stats.kurtosis - 3.0) < 1.2);
 }
 
-// =============================================================================
 // Test 2 : Antithetic variates
-// =============================================================================
 TEST_CASE("Antithetic variates reduce variance", "[MonteCarloEngine]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.05, 0.20, 999);
@@ -74,9 +71,7 @@ TEST_CASE("Antithetic variates reduce variance", "[MonteCarloEngine]")
     REQUIRE(std2 <= std1 * 1.05);
 }
 
-// =============================================================================
 // Test 3 : Parallélisme
-// =============================================================================
 TEST_CASE("Parallelism produces deterministic results", "[MonteCarloEngine]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.07, 0.22, 2024);
@@ -101,9 +96,7 @@ TEST_CASE("Parallelism produces deterministic results", "[MonteCarloEngine]")
     REQUIRE(mean1 == Approx(mean2).margin(1e-6));
 }
 
-// =============================================================================
 // Test 4 : Export CSV
-// =============================================================================
 TEST_CASE("Export to CSV generates a non-empty file", "[MonteCarloEngine]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.05, 0.2);
@@ -139,9 +132,7 @@ TEST_CASE("Export to CSV generates a non-empty file", "[MonteCarloEngine]")
     std::filesystem::remove(filename);
 }
 
-// =============================================================================
 // Test 5 : Exception si getStatistics() appelé avant simulate()
-// =============================================================================
 TEST_CASE("Calling getStatistics before simulate throws", "[MonteCarloEngine]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.05, 0.2);
@@ -150,9 +141,7 @@ TEST_CASE("Calling getStatistics before simulate throws", "[MonteCarloEngine]")
     REQUIRE_THROWS_AS(engine.getStatistics(), std::runtime_error);
 }
 
-// =============================================================================
 // Test 6 : Exact scheme plausibility
-// =============================================================================
 TEST_CASE("Exact scheme uses closed-form GBM solution", "[MonteCarloEngine]")
 {
     auto process = std::make_shared<GeometricBrownianMotion>(100.0, 0.1, 0.3, 111);

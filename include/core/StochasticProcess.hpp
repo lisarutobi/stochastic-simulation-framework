@@ -34,15 +34,13 @@ public:
 
     virtual ~StochasticProcess() = default;
 
-    // No copy, only move
+    //no copy, only move
     StochasticProcess(const StochasticProcess&) = delete;
     StochasticProcess& operator=(const StochasticProcess&) = delete;
     StochasticProcess(StochasticProcess&&) = default;
     StochasticProcess& operator=(StochasticProcess&&) = default;
 
-    // ====================================================================
     // Pure virtual methods
-    // ====================================================================
     virtual double nextStep(double dt) = 0;
     virtual double drift(double t, double x) const = 0;
     virtual double diffusion(double t, double x) const = 0;
@@ -56,9 +54,7 @@ public:
 
     virtual std::shared_ptr<StochasticProcess> clone() const = 0;
 
-    // ====================================================================
     // Default virtual methods
-    // ====================================================================
     virtual bool hasStationaryDistribution() const { return false; }
     virtual bool canBeNegative() const { return true; }
     virtual void enforceConstraints() {}
@@ -67,9 +63,7 @@ public:
         return simulatePath(grid, false);  // fallback Euler si pas d’exact
     }
 
-    // ====================================================================
-    // MÉTHODE PRINCIPALE : simulation avec TimeGrid
-    // ====================================================================
+    // méthode principale simulation avec TimeGrid
     virtual std::vector<double> simulatePath(const TimeGrid& grid, bool useExact = false) {
         if (useExact) {
             return simulatePathExact(grid);
@@ -110,9 +104,7 @@ public:
         return paths;
     }
 
-    // ====================================================================
     // Utilitaires
-    // ====================================================================
     void reset() { currentState_ = initialState_; }
     double getCurrentState() const { return currentState_; }
     void setCurrentState(double s) { currentState_ = s; }
