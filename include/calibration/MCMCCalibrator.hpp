@@ -1,6 +1,7 @@
 #pragma once
-#include "../core/StochasticProcess.hpp"
-#include "../data/TimeSeriesData.hpp"
+
+#include "core/StochasticProcess.hpp"
+#include "data/TimeSeriesData.hpp"
 #include <vector>
 #include <map>
 #include <string>

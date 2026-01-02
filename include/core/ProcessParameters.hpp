@@ -1,6 +1,4 @@
-// include/core/ProcessParameters.hpp
-#ifndef PROCESS_PARAMETERS_HPP
-#define PROCESS_PARAMETERS_HPP
+#pragma once
 
 #include <string>
 #include <map>
@@ -288,5 +286,3 @@ public:
 };
 
 } // namespace stochastic
-
-#endif // PROCESS_PARAMETERS_HPP

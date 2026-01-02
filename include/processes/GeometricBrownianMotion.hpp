@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core/StochasticProcess.hpp"
 #include "core/ProcessParameters.hpp"
 #include <cmath>

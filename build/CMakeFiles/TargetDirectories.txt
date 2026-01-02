@@ -1,4 +1,0 @@
-/home/lisarutobi/stochastic-simulation-framework/build/CMakeFiles/stochastic_framework.dir
-/home/lisarutobi/stochastic-simulation-framework/build/CMakeFiles/monprogramme.dir
-/home/lisarutobi/stochastic-simulation-framework/build/CMakeFiles/edit_cache.dir
-/home/lisarutobi/stochastic-simulation-framework/build/CMakeFiles/rebuild_cache.dir

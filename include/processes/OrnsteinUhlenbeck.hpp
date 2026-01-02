@@ -1,11 +1,9 @@
+#pragma once
+
 #include "core/StochasticProcess.hpp"
 #include "core/ProcessParameters.hpp"
 #include <cmath>
 #include <limits>
-#include <vector>
-#include <string>
-#include <memory>
-#include <random>
 
 namespace stochastic {
 
