@@ -1,6 +1,6 @@
 # Simulation Stochastique en C++
 
-Ce projet fournit un **framework C++** pour **simuler des processus stochastiques**, effectuer des **simulations Monte Carlo**, et **calibrer des modèles financiers sur des données de marché réelles**.
+Ce projet fournit un framework C++ pour ssimuler des processus stochastiques, effectuer des simulations Monte Carlo, et calibrer des modèles sur des données de marché réelles avec MCMC.
 
 Le but principal est de permettre :
 - L’étude de trajectoires stochastiques (prix, taux, volatilité)  
@@ -51,10 +51,10 @@ Voici un exemple simple pour simuler un GBM :
 #include "processes/GeometricBrownianMotion.hpp"
 #include "simulation/MonteCarloEngine.hpp"
 
-// Création du processus
+// création du processus
 auto gbm = std::make_shared<GeometricBrownianMotion>(100.0, 0.05, 0.2);
 
-// Configuration Monte Carlo
+// configuration Monte Carlo
 MonteCarloEngine::SimulationConfig cfg;
 cfg.nPaths = 10000;          // nombre de trajectoires
 cfg.nSteps = 252;            // nombre de pas par trajectoire
@@ -67,11 +67,6 @@ engine.simulate();
 // Statistiques finales
 std::cout << "Moyenne finale : " << engine.getStatistics().terminalMean << std::endl;
 ```
-
-Parallélisation automatique
-Le moteur choisit séquentiel ou parallèle selon le nombre de threads et le nombre de trajectoires.
-Chaque thread utilise une graine différente pour que les simulations soient indépendantes.
-
 ## Calibration MCMC
 Pour calibrer un processus sur des données historiques :
 ```cpp
@@ -101,8 +96,7 @@ Caractéristiques :
 - Algorithme Metropolis-Hastings avec covariance adaptative
 - Support pour priors uniforme, normal et log-normal
 - Compatible avec tout processus dérivant de StochasticProcess
-
-## Tests avec Catch2
+- Tests avec Catch2 et fonctions principales commentés Doxygen
 
 ```bash
 ./tests/testProcesses
@@ -116,7 +110,7 @@ Caractéristiques :
 ## Structure du projet
 stochastic-simulation-framework/
 ├─ include/
-│  ├─ core/           # Classes de base : StochasticProcess.hpp, TimeGrid.hpp, ProcessParameters.hpp
+│  ├─ core/           # classes de base : StochasticProcess.hpp, TimeGrid.hpp, ProcessParameters.hpp
 |  ├─ data/           # DataPreprocessor.hpp, MarketDataLoader.hpp, TimeSerisData.hpp, YahooFinanceApi.hpp
 │  ├─ processes/      # GBM, Heston, OU, CIR, Levy, fBM.
 |  ├─ simulation/     # MonteCarloEngine.hpp

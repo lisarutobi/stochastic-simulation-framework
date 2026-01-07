@@ -83,7 +83,7 @@ public:
         return path;
     }
 
-    // Surcharges compatibilité ascendante
+    // surcharges compatibilité ascendante
     virtual std::vector<double> simulatePath(double T, size_t numSteps, bool useExact = false) {
         TimeGrid grid(0.0, T, numSteps);
         return simulatePath(grid, useExact);
@@ -93,7 +93,7 @@ public:
         return simulatePath(T, numSteps, false);
     }
 
-    // Plusieurs trajectoires
+    // plusieurs trajectoires
     std::vector<std::vector<double>> simulatePaths(double T, size_t numSteps, size_t nPaths, bool useExact = false) {
         std::vector<std::vector<double>> paths;
         paths.reserve(nPaths);
@@ -104,7 +104,7 @@ public:
         return paths;
     }
 
-    // Utilitaires
+    // utilitaires
     void reset() { currentState_ = initialState_; }
     double getCurrentState() const { return currentState_; }
     void setCurrentState(double s) { currentState_ = s; }

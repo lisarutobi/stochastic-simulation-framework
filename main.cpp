@@ -18,7 +18,7 @@
 using namespace stochastic;
 
 void printResult(const MCMCCalibrator::CalibrationResult& res) {
-    std::cout << "\n=== RÉSULTATS DE CALIBRATION MCMC ===\n";
+    std::cout << "\nRésultats calibration MCMC (Metropolis Hasting)\n";
     std::cout << "Taux d'acceptation : " << std::fixed << std::setprecision(3) << res.acceptanceRate * 100 << "%\n";
     std::cout << "Log-vraisemblance  : " << res.logLikelihood << "\n";
     std::cout << "AIC / BIC          : " << res.AIC << " / " << res.BIC << "\n\n";
@@ -32,19 +32,17 @@ void printResult(const MCMCCalibrator::CalibrationResult& res) {
     }
 }
 
-int main2() {
+int main() {
     std::cout << R"(
-╔═══════════════════════════════════════════════════════════╗
-║     FRAMEWORK DE SIMULATION STOCHASTIQUE 2025            ║
-║     Calibration MCMC + Yahoo Finance + 7 modèles         ║
-╚═══════════════════════════════════════════════════════════╝
+     FRAMEWORK DE SIMULATION STOCHASTIQUE 2025            
+     Calibration MCMC + Yahoo Finance + 7 modèles      
 )" << std::endl;
 
     std::string ticker;
     std::cout << "Entrez le ticker (ex: AAPL, TSLA, SPY, BTC-USD) : ";
     std::cin >> ticker;
 
-    std::cout << "\nTéléchargement des données pour " << ticker << " ...\n";
+    std::cout << "\ntéléchargement des données pour " << ticker << " ...\n";
     auto data = YahooFinanceAPI::downloadHistoricalData(ticker, "2020-01-01", "2025-01-01", "1d");
 
     if (data.prices.size() < 100) {
@@ -52,7 +50,7 @@ int main2() {
         return 1;
     }
 
-    // Calcul des log-returns
+    // passe aux log returns, metrique de base de notre outil, mais on peut également travailler avec returns
     std::vector<double> logReturns;
     logReturns.reserve(data.prices.size() - 1);
     for (size_t i = 1; i < data.prices.size(); ++i) {
@@ -132,7 +130,7 @@ Votre choix (1-5) : )";
     }
 
     std::cout << "\nLancement de la calibration MCMC sur " << ticker << " avec " << process->getName() << "...\n";
-    auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now(); // pour suivre perfs models
 
     MCMCCalibrator calibrator(process, tsData, config);
     auto result = calibrator.calibrateFromMarketData();
@@ -147,19 +145,15 @@ Votre choix (1-5) : )";
 }
 
 //test du Monte Carlo Engine
-int main() {
-    // ---------------------------------------------------------------
-    // 1) Paramètres du processus GBM
-    // ---------------------------------------------------------------
+int testMCEngine() {
+    //paramètres du processus pour ici GBM
     double S0 = 100.0;   // valeur initiale
     double mu = 0.05;    // drift
     double sigma = 0.2;  // volatilité
 
     auto gbm = std::make_shared<stochastic::GeometricBrownianMotion>(S0, mu, sigma);
 
-    // ---------------------------------------------------------------
-    // 2) Configuration de simulation Monte Carlo
-    // ---------------------------------------------------------------
+    //configuration de simulation Monte Carlo
     MonteCarloEngine::SimulationConfig cfg;
     cfg.nPaths = 5000;
     cfg.nSteps = 252;
@@ -171,18 +165,15 @@ int main() {
 
     MonteCarloEngine engine(gbm, cfg);
 
-    // ---------------------------------------------------------------
-    // 3) Lancement de la simulation
-    // ---------------------------------------------------------------
+   
+    //lancement de la simulation
     std::cout << "Running Monte Carlo simulation...\n";
     engine.simulate();
 
-    // ---------------------------------------------------------------
-    // 4) Récupération des statistiques
-    // ---------------------------------------------------------------
+    //récupération des statistiques
     auto stats = engine.getStatistics();
 
-    std::cout << "\n===== Simulation Results =====\n";
+    std::cout << "\nSimulation Results\n";
     std::cout << "Number of paths        : " << stats.nPaths << "\n";
     std::cout << "Terminal mean          : " << stats.terminalMean << "\n";
     std::cout << "Terminal stdev         : " << stats.terminalStd << "\n";
@@ -192,11 +183,62 @@ int main() {
     std::cout << "Kurtosis               : " << stats.kurtosis << "\n";
     std::cout << "Estimated convergence  : " << stats.standardError << "\n";
 
-    // ---------------------------------------------------------------
-    // 5) (Optionnel) Export CSV
-    // ---------------------------------------------------------------
+    //(optionnel) export CSV
     engine.exportToCSV("paths.csv");
     std::cout << "\nPaths exported to paths.csv\n";
 
+    return 0;
+}
+
+//test de l'API Yahoo Finance
+int testYahooFinance() {
+    std::string ticker = "AAPL";
+    std::cout << "Downloading historical data for " << ticker << "...\n";
+    auto data = YahooFinanceAPI::downloadHistoricalData(ticker, "2020-01-01", "2025-01-01", "1d");
+
+    std::cout << "Data downloaded:\n";
+    for (size_t i = 0; i < std::min(size_t(5), data.dates.size()); ++i) {
+        std::cout << data.dates[i] << " : " << data.prices[i] << "\n";
+    }
+    return 0;
+}
+
+//test de la calibration MCMC sur données synthétiques GBM testMCMC
+int testMCMC() {
+    //données synthétiques GBM
+    double S0 = 100.0;
+    double mu = 0.05;
+    double sigma = 0.2;
+    size_t nSteps = 252;
+    double T = 1.0;
+
+    GeometricBrownianMotion gbm(S0, mu, sigma);
+    TimeGrid grid(0.0, T, nSteps);
+    auto path = gbm.simulatePathExact(grid);
+
+    //calcul des log-returns
+    std::vector<double> logReturns;
+    for (size_t i = 1; i < path.size(); ++i) {
+        logReturns.push_back(std::log(path[i] / path[i-1]));
+    }
+
+    TimeSeriesData tsData;
+    tsData.path = logReturns;
+    tsData.dt = T / nSteps;
+
+    //configuration MCMC
+    MCMCCalibrator::MCMCConfig config;
+    config.nIterations = 20000;
+    config.burnIn = 5000;
+    config.thinning = 5;
+    config.adaptiveProposal = true;
+
+    config.priors["mu"]    = {MCMCCalibrator::Prior::Type::NORMAL,    {0.0, 0.2}};
+    config.priors["sigma"] = {MCMCCalibrator::Prior::Type::LOGNORMAL, { -2.0, 0.5}};
+
+    MCMCCalibrator calibrator(std::make_shared<GeometricBrownianMotion>(S0), tsData, config);
+    auto result = calibrator.calibrateFromMarketData();
+
+    printResult(result);
     return 0;
 }

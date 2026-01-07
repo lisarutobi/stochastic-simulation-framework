@@ -24,7 +24,7 @@ MonteCarloEngine::MonteCarloEngine(
 
 // Fonction principale de simulation
 /**
- * @brief Lance la simulation Monte Carlo (choisit automatiquement parallèle ou séquentiel).
+ * @brief Lance la simulation Monte Carlo (choisit automatiquement parallèle ou séquentiel selon le nombre de paths).
  * @return Toutes les trajectoires simulées.
  */
 std::vector<std::vector<double>> MonteCarloEngine::simulate() {
@@ -135,7 +135,7 @@ void MonteCarloEngine::applyAntitheticVariates() {
  */
 MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
     if (paths_.empty())
-        throw std::runtime_error("Aucune path simulée → appelez simulate() avant.");
+        throw std::runtime_error("aucune path simulée → appelez simulate() avant.");
 
     SimulationStatistics S;
     S.nPaths = paths_.size();
@@ -185,7 +185,7 @@ MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
         S.quant95[i] = q(0.95);
     }
 
-    // Statistiques terminales
+    // statistiques terminales
     std::vector<double> terminal;
     terminal.reserve(S.nPaths);
     for (const auto &p : paths_) terminal.push_back(p.back());
@@ -196,7 +196,7 @@ MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
     S.terminalMin  = terminal.front();
     S.terminalMax  = terminal.back();
 
-    // Moments
+    // moments
     double m3 = 0.0, m4 = 0.0;
     for (double x : terminal) {
         double z = (x - S.terminalMean) / S.terminalStd;
@@ -212,21 +212,21 @@ MonteCarloEngine::SimulationStatistics MonteCarloEngine::getStatistics() const {
 }
 
 /**
- * @brief Retourne un indicateur de convergence.
+ * @brief retourne un indicateur de convergence.
  */
 double MonteCarloEngine::estimateConvergence() const {
     auto S = getStatistics();
-    return S.standardError / S.terminalStd;
+    return S.standardError / S.terminalStd; //stat modifiable
 }
 
 // export csv
 /**
- * @brief Exporte les trajectoires dans un fichier CSV.
+ * @brief exporte les trajectoires dans un fichier CSV dans le build directement.
  */
 void MonteCarloEngine::exportToCSV(const std::string& filename) const {
     std::ofstream file(filename);
     if (!file) {
-        std::cerr << "Impossible d'ouvrir le fichier : " << filename << "\n";
+        std::cerr << "impossible d'ouvrir le fichier : " << filename << "\n";
         return;
     }
 

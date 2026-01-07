@@ -91,7 +91,7 @@ MCMCCalibrator::MCMCCalibrator(
 {
     size_t nParams = process_->getParameterNames().size();
 
-    // Initialisation de la covariance de proposition
+    //initialisation de la covariance de proposition
     proposalCovariance_ =
         Eigen::MatrixXd::Identity(nParams, nParams)
         * config_.initialStepSize

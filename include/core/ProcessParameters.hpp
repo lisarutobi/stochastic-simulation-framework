@@ -156,14 +156,14 @@ public:
             throw std::invalid_argument("Initial variance v0 must be positive");
         }
         
-        // Condition de Feller : garantit que la variance reste positive
-        // Condition: 2*kappa*theta > xi^2
+        // Condition de Feller garantit que la variance reste positive
+        // Condition 2*kappa*theta > xi^2
         double kappa = params_.at("kappa");
         double theta = params_.at("theta");
         double xi = params_.at("xi");
         if (2 * kappa * theta <= xi * xi) {
             throw std::invalid_argument(
-                "Feller condition violated: 2*kappa*theta > xi^2 required for positive variance"
+                "Condition de Feller non respectée, 2*kappa*theta > xi^2 required for positive variance"
             );
         }
     }

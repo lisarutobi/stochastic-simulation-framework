@@ -142,17 +142,17 @@ public:
         
         double logLik = 0.0;
         
-        // Check if observations are log-returns or prices
+        //check if observations are log-returns or prices for choosing likelihood calculation
         bool isReturns = true;
         for (size_t i = 0; i < std::min(size_t(10), observations.size()); ++i) {
-            if (observations[i] > 10.0) {  // Heuristic: returns are typically small
+            if (observations[i] > 10.0) {  // heuristic returns are typically small (not truely general)
                 isReturns = false;
                 break;
             }
         }
         
         if (isReturns) {
-            // Direct log-return likelihood (much more stable!)
+            //direct log-return likelihood (much more stable!)
             double expectedReturn = (mu - 0.5 * sigma * sigma) * dt;
             double variance = sigma * sigma * dt;
             

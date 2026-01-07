@@ -37,8 +37,7 @@
 MarketDataLoader::MarketData
 DataPreprocessor::computeReturns(
     const MarketDataLoader::MarketData& input,
-    MarketDataLoader::ReturnType type
-) {
+    MarketDataLoader::ReturnType type) {
     MarketDataLoader::MarketData result = input;
 
     // Alignement rendements / prix
@@ -68,7 +67,6 @@ DataPreprocessor::computeReturns(
 
     return result;
 }
-
 
 // Suppression des outliers
 /**

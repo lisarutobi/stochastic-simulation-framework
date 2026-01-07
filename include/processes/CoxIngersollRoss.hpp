@@ -174,7 +174,7 @@ public:
         params_ = std::move(newParams);
     }
 
-    // Vraisemblance exacte via densité de transition chi² non-centrale
+    // vraisemblance exacte via densité de transition chi² non-centrale
     double logLikelihood(const std::vector<double>& observations, double dt) const override {
         if (observations.size() < 2) return 0.0;
 

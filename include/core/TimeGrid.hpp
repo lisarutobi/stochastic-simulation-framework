@@ -170,10 +170,7 @@ public:
         return result;
     }
     
-    // ========================================================================
-    // FACTORY METHODS (méthodes statiques utiles)
-    // ========================================================================
-    
+    // factory methods (méthodes statiques utiles)   
     /**
      * @brief Créer une grille de trading (252 jours/an)
      * @param nYears Nombre d'années

@@ -155,11 +155,11 @@ public:
         for (size_t i = 1; i < logReturns.size(); ++i) {
             double r = logReturns[i];
 
-            // Prédiction Euler de la variance
+            //prédiction Euler de la variance
             v = v + kappa * (theta - v) * dt;
             if (v < 1e-8) v = 1e-8;
 
-            // Vraisemblance conditionnelle gaussienne
+            //vraisemblance conditionnelle gaussienne
             double sigma_t = std::sqrt(v);
             double expectedReturn = (mu - 0.5 * v) * dt;
             double variance = v * dt;
