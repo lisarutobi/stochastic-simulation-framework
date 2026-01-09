@@ -44,6 +44,11 @@ public:
         double BIC;
         double DIC;
     };
+    
+    // Accès à la chaîne MCMC
+    const std::vector<std::vector<double>>& getChain() const {
+        return chain_;
+    };
 
     MCMCCalibrator(std::shared_ptr<stochastic::StochasticProcess> process,
                    const TimeSeriesData& data,

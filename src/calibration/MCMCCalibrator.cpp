@@ -175,39 +175,53 @@ void MCMCCalibrator::runMetropolisHastings() {
     chain_.clear();
     chain_.reserve(config_.nIterations);
 
-    double currentLogPosterior =
-        computeLogPosterior(currentParams_);
+    // calcul du log-posterior initial
+    double currentLogPosterior = computeLogPosterior(currentParams_);
 
     for(size_t iter = 0; iter < config_.nIterations; ++iter) {
 
+        // proposer un nouveau candidat
         auto proposed = proposeParameters(currentParams_);
 
+        // vérifier le support des priors
         if(!inPriorSupport(proposed)) {
+            chain_.push_back(currentParams_); // rejet
+            continue;
+        }
+
+        // calcul du log-posterior du candidat
+        double logPosteriorProposed = -INFINITY;
+        try {
+            logPosteriorProposed = computeLogPosterior(proposed);
+        } 
+        catch (const std::invalid_argument& e) {
+            // rejet silencieux des candidats invalides (ex: Feller)
+            chain_.push_back(currentParams_);
+            continue;
+        } 
+        catch (...) {
             chain_.push_back(currentParams_);
             continue;
         }
 
-        double logPosteriorProposed =
-            computeLogPosterior(proposed);
+        // Metropolis-Hastings: accepter ou rejeter
+        double logAlpha = logPosteriorProposed - currentLogPosterior;
 
-        double logAlpha =
-            logPosteriorProposed - currentLogPosterior;
-
-        if(logAlpha >= 0 ||
-           std::log(std::uniform_real_distribution<>(0,1)(rng_)) < logAlpha) {
-
+        if(logAlpha >= 0.0 ||
+           std::log(std::uniform_real_distribution<>(0.0,1.0)(rng_)) < logAlpha) {
             currentParams_ = proposed;
             currentLogPosterior = logPosteriorProposed;
             ++nAccepted_;
         }
 
+        // stocker dans la chaîne
         chain_.push_back(currentParams_);
 
+        // adaptation de la covariance
         if(config_.adaptiveProposal &&
            iter > 0 &&
            iter < config_.burnIn &&
            iter % config_.adaptationWindow == 0) {
-
             adaptProposal(iter);
         }
     }
